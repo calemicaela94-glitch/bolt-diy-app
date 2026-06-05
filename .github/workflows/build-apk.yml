@@ -94,6 +94,20 @@ jobs:
           npx cap init Bolt.diy ai.bolt.app --web-dir=build/client
           npx cap add android
 
+      - name: Fix Kotlin version conflicts
+        run: |
+          cat >> android/build.gradle << 'EOF'
+          subprojects {
+              project.configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  }
+              }
+          }
+          EOF
+
       - name: Sync Capacitor
         run: npx cap sync
 
