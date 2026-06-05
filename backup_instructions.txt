@@ -1,0 +1,18 @@
+# Comandos para fazer backup da pasta bolt.diy
+
+## Abrir PowerShell (como administrador, opcionalmente)
+
+## 1. Navegar para C:\dev
+Set-Location C:\dev
+
+## 2. Remover a pasta de backup criada incorretamente dentro de bolt.diy
+Remove-Item -Path C:\dev\bolt.diy\bolt.diy.backup_2026-06-04 -Recurse -Force
+
+## 3. Copiar todo o conteúdo com robocopy (recomendado)
+robocopy C:\dev\bolt.diy C:\dev\bolt.diy.backup_2026-06-04 /E /COPY:DAT
+
+## 4. (Alternativa) Se preferir Copy-Item
+# Copy-Item -Path C:\dev\bolt.diy\* -Destination C:\dev\bolt.diy.backup_2026-06-04 -Recurse
+
+## 5. Verificar resultado
+Get-ChildItem C:\dev\bolt.diy.backup_2026-06-04
