@@ -28,40 +28,34 @@ jobs:
       - name: Build web app
         run: pnpm run build
 
-      - name: Debug build output
+      - name: Prepare Capacitor www folder
         run: |
-          echo "=== Build output ==="
-          ls -la build/client/
-          echo "=== Assets folder ==="
-          ls -la build/client/assets/ | head -10
-
-      - name: Create Capacitor compatible structure
-        run: |
-          # Criar a estrutura correta para o Capacitor
-          mkdir -p build/client
+          # Criar a pasta www que o Capacitor espera
+          mkdir -p www
           
-          # Encontrar o ficheiro entry.client real
-          ENTRY_FILE=$(find build/client -name "entry.client*.js" -type f | head -1)
-          ENTRY_NAME=$(basename "$ENTRY_FILE")
-          echo "Entry file found: $ENTRY_NAME"
+          # Copiar todo o build para www
+          cp -r build/client/* www/
           
-          # Criar index.html com o entry point correto
-          cat > build/client/index.html << EOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Bolt.diy</title>
-          </head>
-          <body>
-            <div id="root"></div>
-            <script type="module" src="/assets/${ENTRY_NAME}"></script>
-          </body>
-          </html>
-          EOF
+          # Garantir que o index.html está na raiz do www
+          if [ ! -f www/index.html ]; then
+            cat > www/index.html << 'EOF'
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Bolt.diy</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="index.js"></script>
+            </body>
+            </html>
+            EOF
+          fi
           
-          echo "Index.html created with entry: /assets/${ENTRY_NAME}"
+          echo "www folder prepared:"
+          ls -la www/
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -79,7 +73,7 @@ jobs:
 
       - name: Initialize Capacitor and add Android
         run: |
-          npx cap init Bolt.diy ai.bolt.app --web-dir=build/client
+          npx cap init Bolt.diy ai.bolt.app --web-dir=www
           npx cap add android
 
       - name: Fix Kotlin version conflicts
