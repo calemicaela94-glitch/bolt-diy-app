@@ -30,16 +30,15 @@ jobs:
 
       - name: Prepare Capacitor www folder
         run: |
-          # Criar a pasta www que o Capacitor espera
           mkdir -p www
-          
-          # Copiar todo o build para www
           cp -r build/client/* www/
-          
-          # Garantir que o index.html está na raiz do www
+          echo "www folder prepared with:"
+          ls -la www/
+
+      - name: Create index.html if missing
+        run: |
           if [ ! -f www/index.html ]; then
-            cat > www/index.html << 'EOF'
-            <!DOCTYPE html>
+            echo '<!DOCTYPE html>
             <html>
             <head>
               <meta charset="UTF-8">
@@ -48,14 +47,11 @@ jobs:
             </head>
             <body>
               <div id="root"></div>
-              <script type="module" src="index.js"></script>
+              <script type="module" src="assets/entry.client.js"></script>
             </body>
-            </html>
-            EOF
+            </html>' > www/index.html
           fi
-          
-          echo "www folder prepared:"
-          ls -la www/
+          cat www/index.html
 
       - name: Setup Java
         uses: actions/setup-java@v4
