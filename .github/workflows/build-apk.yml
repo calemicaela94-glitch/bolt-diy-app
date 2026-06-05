@@ -28,52 +28,40 @@ jobs:
       - name: Build web app
         run: pnpm run build
 
-      - name: Create index.html for Capacitor
+      - name: Debug build output
         run: |
+          echo "=== Build output ==="
+          ls -la build/client/
+          echo "=== Assets folder ==="
+          ls -la build/client/assets/ | head -10
+
+      - name: Create Capacitor compatible structure
+        run: |
+          # Criar a estrutura correta para o Capacitor
           mkdir -p build/client
-          cat > build/client/index.html << 'EOF'
+          
+          # Encontrar o ficheiro entry.client real
+          ENTRY_FILE=$(find build/client -name "entry.client*.js" -type f | head -1)
+          ENTRY_NAME=$(basename "$ENTRY_FILE")
+          echo "Entry file found: $ENTRY_NAME"
+          
+          # Criar index.html com o entry point correto
+          cat > build/client/index.html << EOF
           <!DOCTYPE html>
-          <html lang="en">
+          <html>
           <head>
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Bolt.diy</title>
-            <style>
-              body { margin: 0; padding: 0; }
-              #root { min-height: 100vh; }
-            </style>
           </head>
           <body>
             <div id="root"></div>
-            <script>
-              (function() {
-                fetch('/.vite/manifest.json')
-                  .then(res => res.json())
-                  .then(manifest => {
-                    let entryFile = null;
-                    for (const key in manifest) {
-                      if (key.includes('entry.client')) {
-                        entryFile = manifest[key].file;
-                        break;
-                      }
-                    }
-                    if (entryFile) {
-                      const script = document.createElement('script');
-                      script.type = 'module';
-                      script.src = '/' + entryFile;
-                      document.head.appendChild(script);
-                    } else {
-                      document.getElementById('root').innerHTML = '<div style="padding:20px">Erro: Entry point não encontrado</div>';
-                    }
-                  })
-                  .catch(() => {
-                    document.getElementById('root').innerHTML = '<div style="padding:20px">Erro ao carregar aplicação</div>';
-                  });
-              })();
-            </script>
+            <script type="module" src="/assets/${ENTRY_NAME}"></script>
           </body>
           </html>
           EOF
+          
+          echo "Index.html created with entry: /assets/${ENTRY_NAME}"
 
       - name: Setup Java
         uses: actions/setup-java@v4
