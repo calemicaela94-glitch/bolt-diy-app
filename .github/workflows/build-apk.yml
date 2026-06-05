@@ -3,6 +3,7 @@
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -27,6 +28,53 @@ jobs:
       - name: Build web app
         run: pnpm run build
 
+      - name: Create index.html for Capacitor
+        run: |
+          mkdir -p build/client
+          cat > build/client/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+            <title>Bolt.diy</title>
+            <style>
+              body { margin: 0; padding: 0; }
+              #root { min-height: 100vh; }
+            </style>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script>
+              (function() {
+                fetch('/.vite/manifest.json')
+                  .then(res => res.json())
+                  .then(manifest => {
+                    let entryFile = null;
+                    for (const key in manifest) {
+                      if (key.includes('entry.client')) {
+                        entryFile = manifest[key].file;
+                        break;
+                      }
+                    }
+                    if (entryFile) {
+                      const script = document.createElement('script');
+                      script.type = 'module';
+                      script.src = '/' + entryFile;
+                      document.head.appendChild(script);
+                    } else {
+                      document.getElementById('root').innerHTML = '<div style="padding:20px">Erro: Entry point não encontrado</div>';
+                    }
+                  })
+                  .catch(() => {
+                    document.getElementById('root').innerHTML = '<div style="padding:20px">Erro ao carregar aplicação</div>';
+                  });
+              })();
+            </script>
+          </body>
+          </html>
+          EOF
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -35,6 +83,16 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        run: |
+          npm install -g @capacitor/cli
+          npm install @capacitor/core @capacitor/android
+
+      - name: Initialize Capacitor and add Android
+        run: |
+          npx cap init Bolt.diy ai.bolt.app --web-dir=build/client
+          npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync
@@ -48,5 +106,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: bolt-diy-app
+          path: android/app/build/outputs/apk/debug/*.apk
