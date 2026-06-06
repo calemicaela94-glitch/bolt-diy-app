@@ -28,124 +28,35 @@ jobs:
       - name: Build web app
         run: pnpm run build
 
-      - name: Find all JavaScript files
-        run: |
-          echo "=== Procurando entry.client em todo o projeto ==="
-          find . -name "entry.client*.js" -type f 2>/dev/null | grep -v node_modules
-          echo "=== Procurando todos os ficheiros .js ==="
-          find . -name "*.js" -type f 2>/dev/null | grep -v node_modules | head -20
-          echo "=== Conteúdo da pasta build ==="
-          ls -la build/ 2>/dev/null || echo "build não existe"
-          echo "=== Conteúdo da pasta build/client ==="
-          ls -la build/client/ 2>/dev/null || echo "build/client não existe"
-          echo "=== Conteúdo da pasta dist ==="
-          ls -la dist/ 2>/dev/null || echo "dist não existe"
-          echo "=== Conteúdo da pasta public ==="
-          ls -la public/ 2>/dev/null || echo "public não existe"
-
-      - name: Prepare www folder with all build files
+      - name: Create www folder for Capacitor
         run: |
           mkdir -p www
-          mkdir -p www/assets
-          
-          # Copiar tudo o que for encontrado
-          if [ -d "build/client" ]; then
-            cp -r build/client/* www/ 2>/dev/null || true
-            echo "Copied build/client"
-          fi
-          if [ -d "dist" ]; then
-            cp -r dist/* www/ 2>/dev/null || true
-            echo "Copied dist"
-          fi
-          if [ -d "public" ]; then
-            cp -r public/* www/ 2>/dev/null || true
-            echo "Copied public"
-          fi
-          
-          echo "=== www contents ==="
-          ls -la www/
-          echo "=== www/assets contents ==="
-          ls -la www/assets/ 2>/dev/null || echo "No assets folder"
-          
-          # Encontrar qualquer ficheiro entry.client e copiar para a raiz se necessário
-          ENTRY_FILE=$(find www -name "entry.client*.js" -type f 2>/dev/null | head -1)
-          if [ -n "$ENTRY_FILE" ]; then
-            echo "Entry file found at: $ENTRY_FILE"
-            cp "$ENTRY_FILE" www/entry.client.js
-            echo "Copied entry file to www/entry.client.js"
-          else
-            echo "No entry.client file found"
-            # Criar um entry.client.js básico se não existir
-            echo 'console.log("Entry point carregado");
-            import { hydrateRoot } from "react-dom/client";
-            import { RemixBrowser } from "@remix-run/react";
-            hydrateRoot(document, <RemixBrowser />);' > www/entry.client.js
-            echo "Created basic entry.client.js"
-          fi
-          
-          # Criar index.html que carrega o entry.client.js correto
-          cat > www/index.html << 'HTML'
-          <!DOCTYPE html>
+          cp -r build/client/* www/ 2>/dev/null || true
+          echo '<!DOCTYPE html>
           <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Bolt.diy</title>
-          </head>
-          <body>
-            <div id="root"></div>
-            <script type="module" src="entry.client.js"></script>
-          </body>
-          </html>
-          HTML
-          
-          echo "=== Final www contents ==="
-          ls -la www/
-          echo "=== www/entry.client.js exists? ==="
-          ls -la www/entry.client.js 2>/dev/null || echo "entry.client.js not found in www"
+          <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Bolt.diy</title></head>
+          <body><div id="root"></div><script type="module" src="index.js"></script></body>
+          </html>' > www/index.html
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+          java-version: '17'
 
       - name: Install Capacitor
         run: |
-          npm install -g @capacitor/cli
-          npm install @capacitor/core @capacitor/android
+          npm install -g @capacitor/cli @capacitor/core @capacitor/android
 
-      - name: Initialize Capacitor and add Android
+      - name: Build APK with Capacitor
         run: |
           npx cap init Bolt.diy ai.bolt.app --web-dir=www
           npx cap add android
-
-      - name: Fix Kotlin version conflicts
-        run: |
-          echo 'subprojects {
-              project.configurations.all {
-                  resolutionStrategy {
-                      force "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
-                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22"
-                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
-                  }
-              }
-          }' >> android/build.gradle
-
-      - name: Sync Capacitor
-        run: npx cap sync
-
-      - name: Build APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          npx cap sync
+          cd android && chmod +x gradlew && ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: bolt-diy-app
+          name: bolt-app
           path: android/app/build/outputs/apk/debug/*.apk
