@@ -30,50 +30,29 @@ jobs:
 
       - name: Inspect build output
         run: |
-          echo "=== Current directory ==="
-          pwd
           echo "=== build/client contents ==="
           ls -la build/client/ 2>/dev/null || echo "build/client not found"
           echo "=== build contents ==="
           ls -la build/ 2>/dev/null || echo "build not found"
           echo "=== public contents ==="
           ls -la public/ 2>/dev/null || echo "public not found"
-          echo "=== app contents ==="
-          ls -la app/ 2>/dev/null | head -10 || echo "app not found"
 
       - name: Prepare www folder
         run: |
-          # Criar a pasta www primeiro
           mkdir -p www
-          
-          # Tentar diferentes origens para os ficheiros
-          if [ -d "build/client" ] && [ "$(ls -A build/client)" ]; then
-            echo "Copying from build/client"
-            cp -r build/client/* www/
-          elif [ -d "build" ] && [ "$(ls -A build)" ]; then
-            echo "Copying from build"
-            cp -r build/* www/
-          elif [ -d "public" ] && [ "$(ls -A public)" ]; then
-            echo "Copying from public"
-            cp -r public/* www/
+          if [ -d "build/client" ]; then
+            cp -r build/client/* www/ 2>/dev/null || true
+            echo "Copied from build/client"
+          elif [ -d "build" ]; then
+            cp -r build/* www/ 2>/dev/null || true
+            echo "Copied from build"
+          elif [ -d "public" ]; then
+            cp -r public/* www/ 2>/dev/null || true
+            echo "Copied from public"
           else
-            echo "No build output found, creating minimal index.html"
-            cat > www/index.html << 'EOF'
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Bolt.diy</title>
-            </head>
-            <body>
-              <div id="root">Aplicação carregando...</div>
-            </body>
-            </html>
-            EOF
+            echo "No build output found"
           fi
-          
-          echo "=== www contents ==="
+          echo "www contents:"
           ls -la www/
 
       - name: Setup Java
@@ -97,17 +76,15 @@ jobs:
 
       - name: Fix Kotlin version conflicts
         run: |
-          cat >> android/build.gradle << 'EOF'
-          subprojects {
+          echo 'subprojects {
               project.configurations.all {
                   resolutionStrategy {
-                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                      force "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22"
+                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
                   }
               }
-          }
-          EOF
+          }' >> android/build.gradle
 
       - name: Sync Capacitor
         run: npx cap sync
