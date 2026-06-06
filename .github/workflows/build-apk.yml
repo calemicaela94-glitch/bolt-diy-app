@@ -38,11 +38,11 @@ jobs:
           <body><div id="root"></div><script type="module" src="index.js"></script></body>
           </html>' > www/index.html
 
-      - name: Setup Java
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Install Capacitor and Android platform
         run: |
