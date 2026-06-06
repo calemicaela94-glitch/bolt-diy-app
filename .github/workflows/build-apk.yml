@@ -28,26 +28,64 @@ jobs:
       - name: Build web app
         run: pnpm run build
 
-      - name: Inspect build output
+      - name: Find all JavaScript files
         run: |
-          echo "=== build/client contents ==="
-          ls -la build/client/ 2>/dev/null || echo "build/client not found"
-          echo "=== build contents ==="
-          ls -la build/ 2>/dev/null || echo "build not found"
+          echo "=== Procurando entry.client em todo o projeto ==="
+          find . -name "entry.client*.js" -type f 2>/dev/null | grep -v node_modules
+          echo "=== Procurando todos os ficheiros .js ==="
+          find . -name "*.js" -type f 2>/dev/null | grep -v node_modules | head -20
+          echo "=== Conteúdo da pasta build ==="
+          ls -la build/ 2>/dev/null || echo "build não existe"
+          echo "=== Conteúdo da pasta build/client ==="
+          ls -la build/client/ 2>/dev/null || echo "build/client não existe"
+          echo "=== Conteúdo da pasta dist ==="
+          ls -la dist/ 2>/dev/null || echo "dist não existe"
+          echo "=== Conteúdo da pasta public ==="
+          ls -la public/ 2>/dev/null || echo "public não existe"
 
-      - name: Prepare www folder with index.html
+      - name: Prepare www folder with all build files
         run: |
-          # Criar a pasta www
           mkdir -p www
+          mkdir -p www/assets
           
-          # Copiar assets se existirem
-          if [ -d "build/client/assets" ]; then
-            cp -r build/client/assets www/
-            echo "Copied assets from build/client"
+          # Copiar tudo o que for encontrado
+          if [ -d "build/client" ]; then
+            cp -r build/client/* www/ 2>/dev/null || true
+            echo "Copied build/client"
+          fi
+          if [ -d "dist" ]; then
+            cp -r dist/* www/ 2>/dev/null || true
+            echo "Copied dist"
+          fi
+          if [ -d "public" ]; then
+            cp -r public/* www/ 2>/dev/null || true
+            echo "Copied public"
           fi
           
-          # Criar index.html básico
-          echo '<!DOCTYPE html>
+          echo "=== www contents ==="
+          ls -la www/
+          echo "=== www/assets contents ==="
+          ls -la www/assets/ 2>/dev/null || echo "No assets folder"
+          
+          # Encontrar qualquer ficheiro entry.client e copiar para a raiz se necessário
+          ENTRY_FILE=$(find www -name "entry.client*.js" -type f 2>/dev/null | head -1)
+          if [ -n "$ENTRY_FILE" ]; then
+            echo "Entry file found at: $ENTRY_FILE"
+            cp "$ENTRY_FILE" www/entry.client.js
+            echo "Copied entry file to www/entry.client.js"
+          else
+            echo "No entry.client file found"
+            # Criar um entry.client.js básico se não existir
+            echo 'console.log("Entry point carregado");
+            import { hydrateRoot } from "react-dom/client";
+            import { RemixBrowser } from "@remix-run/react";
+            hydrateRoot(document, <RemixBrowser />);' > www/entry.client.js
+            echo "Created basic entry.client.js"
+          fi
+          
+          # Criar index.html que carrega o entry.client.js correto
+          cat > www/index.html << 'HTML'
+          <!DOCTYPE html>
           <html>
           <head>
             <meta charset="UTF-8">
@@ -56,29 +94,15 @@ jobs:
           </head>
           <body>
             <div id="root"></div>
-            <script>
-              console.log("App starting...");
-              // Tenta carregar os ficheiros JavaScript que existem
-              fetch("/assets/entry.client.js")
-                .then(function(res) {
-                  if (res.ok) {
-                    var script = document.createElement("script");
-                    script.type = "module";
-                    script.src = "/assets/entry.client.js";
-                    document.head.appendChild(script);
-                  } else {
-                    document.getElementById("root").innerHTML = "<h2>Erro: entry.client.js nao encontrado</h2>";
-                  }
-                })
-                .catch(function(err) {
-                  document.getElementById("root").innerHTML = "<h2>Erro: " + err.message + "</h2>";
-                });
-            </script>
+            <script type="module" src="entry.client.js"></script>
           </body>
-          </html>' > www/index.html
+          </html>
+          HTML
           
-          echo "www folder contents:"
+          echo "=== Final www contents ==="
           ls -la www/
+          echo "=== www/entry.client.js exists? ==="
+          ls -la www/entry.client.js 2>/dev/null || echo "entry.client.js not found in www"
 
       - name: Setup Java
         uses: actions/setup-java@v4
