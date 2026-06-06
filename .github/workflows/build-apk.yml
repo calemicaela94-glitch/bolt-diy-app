@@ -54,6 +54,18 @@ jobs:
           npx cap init Bolt.diy ai.bolt.app --web-dir=www
           npx cap add android
           npx cap sync
+          
+          # Forçar versão do Kotlin para resolver conflitos
+          echo "subprojects {
+              project.configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  }
+              }
+          }" >> android/build.gradle
+          
           cd android && chmod +x gradlew && ./gradlew assembleDebug
 
       - name: Upload APK
