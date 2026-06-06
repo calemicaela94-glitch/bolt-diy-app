@@ -28,104 +28,57 @@ jobs:
       - name: Build web app
         run: pnpm run build
 
-      - name: List build output
+      - name: Inspect build output
         run: |
-          echo "=== build/client contents ==="
-          ls -la build/client/
-          echo "=== assets contents ==="
-          ls -la build/client/assets/ | head -20
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Listing all files ==="
+          find . -name "*.js" -type f | grep -v node_modules | head -20
+          echo "=== Looking for build folder ==="
+          ls -la build/ 2>/dev/null || echo "No build folder"
+          echo "=== Looking for client folder ==="
+          ls -la build/client/ 2>/dev/null || echo "No build/client folder"
+          echo "=== Looking for public folder ==="
+          ls -la public/ 2>/dev/null || echo "No public folder"
 
-      - name: Prepare Capacitor www folder
+      - name: Find the actual build output
         run: |
-          mkdir -p www
-          cp -r build/client/* www/
-          echo "www folder prepared"
-
-      - name: Create index.html with debug
-        run: |
-          cat > www/index.html << 'HTML'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Bolt.diy - Debug</title>
-            <style>
-              body { margin: 0; padding: 20px; font-family: monospace; background: #f0f0f0; }
-              #debug { 
-                position: fixed; 
-                bottom: 0; 
-                left: 0; 
-                right: 0; 
-                background: #000; 
-                color: #0f0; 
-                padding: 10px; 
-                font-size: 11px;
-                max-height: 250px;
-                overflow: auto;
-                z-index: 9999;
-              }
-            </style>
-          </head>
-          <body>
-            <div id="root"><h2>Bolt.diy - A carregar...</h2></div>
-            <div id="debug"></div>
-            <script>
-              function log(msg) {
-                const debug = document.getElementById('debug');
-                if (debug) {
-                  debug.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
-                  debug.scrollTop = debug.scrollHeight;
-                }
-                console.log(msg);
-              }
-              
-              log('=== App iniciado ===');
-              log('User Agent: ' + navigator.userAgent);
-              
-              fetch('/.vite/manifest.json')
-                .then(res => {
-                  log('Manifest status: ' + res.status);
-                  if (res.ok) return res.json();
-                  throw new Error('Manifest not found');
-                })
-                .then(manifest => {
-                  log('Manifest loaded, keys: ' + Object.keys(manifest).join(', '));
-                  let entryFile = null;
-                  for (const key in manifest) {
-                    if (key.includes('entry.client') || key === 'index.html') {
-                      entryFile = manifest[key].file;
-                      break;
-                    }
-                  }
-                  if (entryFile) {
-                    log('Entry file found: ' + entryFile);
-                    const script = document.createElement('script');
-                    script.type = 'module';
-                    script.src = '/' + entryFile;
-                    script.onload = () => log('Script loaded: ' + entryFile);
-                    script.onerror = (e) => log('Script error: ' + e);
-                    document.head.appendChild(script);
-                  } else {
-                    log('No entry file found in manifest');
-                  }
-                })
-                .catch(err => {
-                  log('Manifest error: ' + err.message);
-                  log('Tentando carregar entry.client.js diretamente...');
-                  const script = document.createElement('script');
-                  script.type = 'module';
-                  script.src = '/assets/entry.client.js';
-                  script.onload = () => log('Direct script loaded');
-                  script.onerror = (e) => log('Direct script error: ' + e);
-                  document.head.appendChild(script);
-                });
-            </script>
-          </body>
-          </html>
-          HTML
+          # O Remix pode gerar os ficheiros noutro local
+          if [ -d "build/client" ]; then
+            echo "Using build/client"
+            cp -r build/client/* www/
+          elif [ -d "build" ]; then
+            echo "Using build"
+            cp -r build/* www/
+          elif [ -d "public" ]; then
+            echo "Using public"
+            cp -r public/* www/
+          else
+            echo "Creating www from assets"
+            mkdir -p www
+            cp -r app/styles www/ 2>/dev/null || true
+          fi
           
-          echo "Debug index.html created"
+          # Garantir que há um index.html
+          if [ ! -f www/index.html ]; then
+            cat > www/index.html << 'EOF'
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Bolt.diy</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/index.js"></script>
+            </body>
+            </html>
+            EOF
+          fi
+          
+          echo "=== www contents ==="
+          ls -la www/
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -172,5 +125,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: bolt-diy-app-debug
+          name: bolt-diy-app
           path: android/app/build/outputs/apk/debug/*.apk
