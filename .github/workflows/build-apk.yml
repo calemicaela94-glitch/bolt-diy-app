@@ -32,35 +32,32 @@ jobs:
         run: |
           echo "=== Current directory ==="
           pwd
-          echo "=== Listing all files ==="
-          find . -name "*.js" -type f | grep -v node_modules | head -20
-          echo "=== Looking for build folder ==="
-          ls -la build/ 2>/dev/null || echo "No build folder"
-          echo "=== Looking for client folder ==="
-          ls -la build/client/ 2>/dev/null || echo "No build/client folder"
-          echo "=== Looking for public folder ==="
-          ls -la public/ 2>/dev/null || echo "No public folder"
+          echo "=== build/client contents ==="
+          ls -la build/client/ 2>/dev/null || echo "build/client not found"
+          echo "=== build contents ==="
+          ls -la build/ 2>/dev/null || echo "build not found"
+          echo "=== public contents ==="
+          ls -la public/ 2>/dev/null || echo "public not found"
+          echo "=== app contents ==="
+          ls -la app/ 2>/dev/null | head -10 || echo "app not found"
 
-      - name: Find the actual build output
+      - name: Prepare www folder
         run: |
-          # O Remix pode gerar os ficheiros noutro local
-          if [ -d "build/client" ]; then
-            echo "Using build/client"
+          # Criar a pasta www primeiro
+          mkdir -p www
+          
+          # Tentar diferentes origens para os ficheiros
+          if [ -d "build/client" ] && [ "$(ls -A build/client)" ]; then
+            echo "Copying from build/client"
             cp -r build/client/* www/
-          elif [ -d "build" ]; then
-            echo "Using build"
+          elif [ -d "build" ] && [ "$(ls -A build)" ]; then
+            echo "Copying from build"
             cp -r build/* www/
-          elif [ -d "public" ]; then
-            echo "Using public"
+          elif [ -d "public" ] && [ "$(ls -A public)" ]; then
+            echo "Copying from public"
             cp -r public/* www/
           else
-            echo "Creating www from assets"
-            mkdir -p www
-            cp -r app/styles www/ 2>/dev/null || true
-          fi
-          
-          # Garantir que há um index.html
-          if [ ! -f www/index.html ]; then
+            echo "No build output found, creating minimal index.html"
             cat > www/index.html << 'EOF'
             <!DOCTYPE html>
             <html>
@@ -70,8 +67,7 @@ jobs:
               <title>Bolt.diy</title>
             </head>
             <body>
-              <div id="root"></div>
-              <script type="module" src="/index.js"></script>
+              <div id="root">Aplicação carregando...</div>
             </body>
             </html>
             EOF
