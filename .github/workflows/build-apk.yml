@@ -44,9 +44,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Capacitor
+      - name: Install Capacitor and Android platform
         run: |
-          npm install -g @capacitor/cli @capacitor/core @capacitor/android
+          npm install -g @capacitor/cli
+          npm install @capacitor/core @capacitor/android
 
       - name: Build APK with Capacitor
         run: |
