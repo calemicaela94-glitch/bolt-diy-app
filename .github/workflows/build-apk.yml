@@ -1,4 +1,4 @@
-﻿name: Build APK
+name: Build APK
 
 on:
   push:
@@ -34,25 +34,50 @@ jobs:
           ls -la build/client/ 2>/dev/null || echo "build/client not found"
           echo "=== build contents ==="
           ls -la build/ 2>/dev/null || echo "build not found"
-          echo "=== public contents ==="
-          ls -la public/ 2>/dev/null || echo "public not found"
 
-      - name: Prepare www folder
+      - name: Prepare www folder with index.html
         run: |
+          # Criar a pasta www
           mkdir -p www
-          if [ -d "build/client" ]; then
-            cp -r build/client/* www/ 2>/dev/null || true
-            echo "Copied from build/client"
-          elif [ -d "build" ]; then
-            cp -r build/* www/ 2>/dev/null || true
-            echo "Copied from build"
-          elif [ -d "public" ]; then
-            cp -r public/* www/ 2>/dev/null || true
-            echo "Copied from public"
-          else
-            echo "No build output found"
+          
+          # Copiar assets se existirem
+          if [ -d "build/client/assets" ]; then
+            cp -r build/client/assets www/
+            echo "Copied assets from build/client"
           fi
-          echo "www contents:"
+          
+          # Criar index.html básico
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Bolt.diy</title>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script>
+              console.log("App starting...");
+              // Tenta carregar os ficheiros JavaScript que existem
+              fetch("/assets/entry.client.js")
+                .then(function(res) {
+                  if (res.ok) {
+                    var script = document.createElement("script");
+                    script.type = "module";
+                    script.src = "/assets/entry.client.js";
+                    document.head.appendChild(script);
+                  } else {
+                    document.getElementById("root").innerHTML = "<h2>Erro: entry.client.js nao encontrado</h2>";
+                  }
+                })
+                .catch(function(err) {
+                  document.getElementById("root").innerHTML = "<h2>Erro: " + err.message + "</h2>";
+                });
+            </script>
+          </body>
+          </html>' > www/index.html
+          
+          echo "www folder contents:"
           ls -la www/
 
       - name: Setup Java
