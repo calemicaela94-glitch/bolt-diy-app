@@ -38,16 +38,40 @@ function spaApiCompatPlugin() {
 
       let modified = code;
 
-      // Replace `export const loader` -> `export const clientLoader`
+      // 1. Direct export: `export const loader = ...` -> `export const clientLoader = ...`
       modified = modified.replace(
         /export\s+(const|function|async function)\s+loader\b/g,
         'export $1 clientLoader',
       );
 
-      // Replace `export const action` -> `export const clientAction`
+      // 2. Direct export: `export const action = ...` -> `export const clientAction = ...`
       modified = modified.replace(
         /export\s+(const|function|async function)\s+action\b/g,
         'export $1 clientAction',
+      );
+
+      // 3. Import rename: `import { loader }` -> `import { clientLoader }`
+      modified = modified.replace(
+        /import\s+\{\s*loader\s*\}/g,
+        'import { clientLoader }',
+      );
+
+      // 4. Import rename: `import { action }` -> `import { clientAction }`
+      modified = modified.replace(
+        /import\s+\{\s*action\s*\}/g,
+        'import { clientAction }',
+      );
+
+      // 5. Re-export: `export { loader }` -> `export { loader as clientLoader }`
+      modified = modified.replace(
+        /export\s+\{\s*loader\s*\}/g,
+        'export { loader as clientLoader }',
+      );
+
+      // 6. Re-export: `export { action }` -> `export { action as clientAction }`
+      modified = modified.replace(
+        /export\s+\{\s*action\s*\}/g,
+        'export { action as clientAction }',
       );
 
       if (modified !== code) {
