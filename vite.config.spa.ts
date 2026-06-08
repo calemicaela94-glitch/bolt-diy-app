@@ -121,6 +121,22 @@ export default defineConfig((config) => {
         exclude: ['child_process', 'fs', 'path'],
       }),
       spaApiCompatPlugin(),
+      {
+        name: 'replaceReactDomServerImport',
+        enforce: 'pre',
+        transform(code: string, id: string) {
+          if (id.endsWith('entry.server.tsx')) {
+            // Fix: react-dom/server → react-dom/server.browser
+            // renderToReadableStream only exists in the browser build
+            return {
+              code: code.replace(/from 'react-dom\/server';?/g, "from 'react-dom/server.browser';"),
+              map: null,
+            };
+          }
+
+          return undefined;
+        },
+      },
       remixVitePlugin({
         // SPA mode: no server rendering, generates standalone index.html
         ssr: false,
