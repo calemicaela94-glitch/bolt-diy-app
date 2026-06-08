@@ -1,4 +1,5 @@
 import { json, type MetaFunction } from '@remix-run/cloudflare';
+import type { ClientLoaderFunction } from '@remix-run/react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { BaseChat } from '~/components/chat/BaseChat';
 import { Chat } from '~/components/chat/Chat.client';
@@ -11,6 +12,10 @@ export const meta: MetaFunction = () => {
 
 export const loader = () => json({});
 
+// SPA/APK compatibility: clientLoader runs in browser without needing a server
+export const clientLoader: ClientLoaderFunction = async () => {
+  return {};
+};
 /**
  * Landing page component for Bolt
  * Note: Settings functionality should ONLY be accessed through the sidebar menu.
