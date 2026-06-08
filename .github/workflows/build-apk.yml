@@ -23,7 +23,9 @@ jobs:
           version: 9
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --no-frozen-lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
 
       - name: Build web app
         run: pnpm run build
