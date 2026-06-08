@@ -17,6 +17,48 @@ dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 dotenv.config();
 
+/*
+ * Plugin: remix-spa-api-compat
+ *
+ * In SPA mode, Remix forbids route exports like `loader` and `action`
+ * (they require a server). This plugin transforms those exports into
+ * no-op `clientLoader` / `clientAction` so the SPA build succeeds.
+ * The API routes become inert in the client — real API calls are
+ * handled by the app's service layer which makes direct HTTP requests.
+ */
+function spaApiCompatPlugin() {
+  return {
+    name: 'remix-spa-api-compat',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      // Match any route file under app/routes/
+      if (!id.includes('app/routes/') || id.includes('node_modules')) {
+        return undefined;
+      }
+
+      let modified = code;
+
+      // Replace `export const loader` -> `export const clientLoader`
+      modified = modified.replace(
+        /export\s+(const|function|async function)\s+loader\b/g,
+        'export $1 clientLoader',
+      );
+
+      // Replace `export const action` -> `export const clientAction`
+      modified = modified.replace(
+        /export\s+(const|function|async function)\s+action\b/g,
+        'export $1 clientAction',
+      );
+
+      if (modified !== code) {
+        return { code: modified, map: null };
+      }
+
+      return undefined;
+    },
+  };
+}
+
 export default defineConfig((config) => {
   return {
     define: {
@@ -36,6 +78,7 @@ export default defineConfig((config) => {
         protocolImports: true,
         exclude: ['child_process', 'fs', 'path'],
       }),
+      spaApiCompatPlugin(),
       remixVitePlugin({
         // SPA mode: no server rendering, generates standalone index.html
         ssr: false,
