@@ -103,6 +103,12 @@ export const clientAction = async () => {
 
 export default defineConfig((config) => {
   return {
+    /*
+     * CRÍTICO para Capacitor/APK: base relativa para que assets (CSS, JS)
+     * funcionem com protocolo file:// no WebView Android.
+     * Sem isto, os caminhos são absolutos (/assets/...) e falham.
+     */
+    base: './',
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     },

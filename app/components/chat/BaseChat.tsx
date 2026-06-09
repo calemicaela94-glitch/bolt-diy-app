@@ -214,14 +214,36 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         }
 
         setIsModelLoading('all');
+
+        /*
+         * Try loading models from server first (Cloudflare/Electron mode).
+         * If server is unavailable (APK/Capacitor offline mode), fall back
+         * to client-side LLMManager which provides static models from all
+         * registered providers without needing a backend.
+         */
         fetch('/api/models')
-          .then((response) => response.json())
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Server returned ${response.status}`);
+            }
+            return response.json();
+          })
           .then((data) => {
             const typedData = data as { modelList: ModelInfo[] };
             setModelList(typedData.modelList);
           })
-          .catch((error) => {
-            console.error('Error fetching model list:', error);
+          .catch(async (error) => {
+            console.warn('[Bolt] Server not available, loading models via LLMManager (client-side):', error.message);
+            // Fallback: load static models directly from LLMManager (works without server in APK)
+            try {
+              const { LLMManager } = await import('~/lib/modules/llm/manager');
+              const llmManager = LLMManager.getInstance({});
+              const staticModels = llmManager.getStaticModelList();
+              setModelList(staticModels);
+              console.log(`[Bolt] Loaded ${staticModels.length} static models from LLMManager`);
+            } catch (llmError) {
+              console.error('[Bolt] Failed to load models from LLMManager:', llmError);
+            }
           })
           .finally(() => {
             setIsModelLoading(undefined);
@@ -243,7 +265,16 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         const data = await response.json();
         providerModels = (data as { modelList: ModelInfo[] }).modelList;
       } catch (error) {
-        console.error('Error loading dynamic models for:', providerName, error);
+        console.warn(`[Bolt] Server not available for provider models (${providerName}), using static models:`, (error as Error).message);
+        // Fallback: load static models directly from LLMManager
+        try {
+          const { LLMManager } = await import('~/lib/modules/llm/manager');
+          const llmManager = LLMManager.getInstance({});
+          const provider = llmManager.getProvider(providerName);
+          providerModels = provider?.staticModels || [];
+        } catch (llmError) {
+          console.error('[Bolt] Failed to load static models:', llmError);
+        }
       }
 
       // Only update models for the specific provider

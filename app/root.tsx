@@ -41,6 +41,13 @@ export const links: LinksFunction = () => [
     href: 'https://fonts.gstatic.com',
     crossOrigin: 'anonymous',
   },
+  /*
+   * Google Fonts com fallback offline.
+   * Em APK/Capacitor (offline), a font externa falha silenciosamente.
+   * O display=swap garante que o texto aparece imediatamente com fallback,
+   * e a font Inter é aplicada se/quando carregar.
+   * Fallback definido globalmente no body via styles/index.scss.
+   */
   {
     rel: 'stylesheet',
     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',

@@ -30,6 +30,16 @@ jobs:
       - name: Build web app (SPA mode for APK)
         run: pnpm remix vite:build --config vite.config.spa.ts
 
+      - name: Inject CSS into index.html (critical for Capacitor/APK)
+        run: |
+          echo "=== Injecting CSS <link> tags into index.html ==="
+          # O Remix SPA nao inclui CSS no index.html. O CSS e carregado
+          # dinamicamente pelo <Links/> apos hidratacao React, o que nao
+          # funciona no WebView Capacitor (file:// protocol).
+          echo "Running inject-css-spa.mjs..."
+          node scripts/inject-css-spa.mjs build/client
+          echo "===================================================="
+
       - name: Create www folder for Capacitor
         run: |
           mkdir -p www
@@ -66,9 +76,26 @@ jobs:
           echo "===================================================="
 
           # Verify asset references use relative paths (critical for WebView file:// protocol)
-          echo "=== Checking asset paths in index.html (must be relative for APK) ==="
-          grep -o 'src="[^"]*"' www/index.html | head -20 || true
-          grep -o 'href="[^"]*"' www/index.html | head -20 || true
+          echo "===================================================="
+
+          # === FIX: Garantir que todos os caminhos de assets sejam relativos ===
+          # O webview Android usa file:// protocol, que nao resolve caminhos absolutos (/assets/...)
+          # O base: './' no vite.config.spa.ts ja deve garantir isto, mas este passo e
+          # uma rede de seguranca para qualquer caminho que escape ao controlo do Vite.
+          echo "=== Forcing relative paths in index.html (critical for file:// protocol) ==="
+          sed -i 's|href="/|href="./|g' www/index.html
+          sed -i 's|src="/|src="./|g' www/index.html
+          echo "===================================================="
+
+          # === VALIDATION: Verificar que nao existem caminhos absolutos ===
+          echo "=== Validating no absolute paths remain in index.html ==="
+          if grep -qE 'href="/[^/]|src="/[^/]' www/index.html; then
+            echo "ERROR: Absolute paths still found in index.html! APK would fail to load CSS/JS."
+            echo "Offending lines:"
+            grep -nE 'href="/[^/]|src="/[^/]' www/index.html
+            exit 1
+          fi
+          echo "All asset paths are relative. ✓"
           echo "===================================================="
 
       - name: Setup Java 21
