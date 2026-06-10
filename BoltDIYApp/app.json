@@ -27,10 +27,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ],
-      "usesCleartextTraffic": true
+      "INTERNET",
+      "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "output": "static",
