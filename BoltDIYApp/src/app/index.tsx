@@ -1,10 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Pressable, BackHandler, Platform } from 'react-native';
-import { WebView, type WebViewNavigation } from 'react-native-webview';
+import { WebView, type WebViewNavigation, type WebViewMessageEvent } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 
-// The URL of your running Bolt.diy dev server
-const BOLT_DIY_URL = 'https://scaling-telegram-6v9g79xp9jxxc4g5g-5173.app.github.dev/';
+// Read URL from app.json extra config, fallback to hardcoded
+const BOLT_DIY_URL =
+  (Constants.expoConfig?.extra as any)?.boltDiyUrl ??
+  'https://scaling-telegram-6v9g79xp9jxxc4g5g-5173.app.github.dev/';
 
 export default function BoltDIYScreen() {
   const [isLoading, setIsLoading] = useState(true);
@@ -24,6 +27,17 @@ export default function BoltDIYScreen() {
   const handleLoadError = useCallback(() => {
     setIsLoading(false);
     setLoadError(true);
+  }, []);
+
+  const handleMessage = useCallback((event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'console') {
+        console.log(`[WebView ${data.level}]`, data.message);
+      }
+    } catch (e) {
+      console.log('[WebView]', event.nativeEvent.data);
+    }
   }, []);
 
   const handleReload = useCallback(() => {
@@ -59,10 +73,38 @@ export default function BoltDIYScreen() {
         allowsInlineMediaPlayback={true}
         mediaPlaybackRequiresUserAction={false}
         mixedContentMode="compatibility"
+        webviewDebuggingEnabled={true}
         onNavigationStateChange={handleNavigationStateChange}
         onLoadEnd={handleLoadEnd}
         onError={handleLoadError}
         onHttpError={handleLoadError}
+        onMessage={handleMessage}
+        injectedJavaScript={`
+          (function() {
+            var originalLog = console.log;
+            var originalWarn = console.warn;
+            var originalError = console.error;
+            function send(level, args) {
+              try {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'console',
+                  level: level,
+                  message: Array.from(args).map(function(a) { return typeof a === 'object' ? JSON.stringify(a) : String(a); }).join(' ')
+                }));
+              } catch(e) {}
+            }
+            console.log = function() { send('log', arguments); originalLog.apply(console, arguments); };
+            console.warn = function() { send('warn', arguments); originalWarn.apply(console, arguments); };
+            console.error = function() { send('error', arguments); originalError.apply(console, arguments); };
+            window.addEventListener('error', function(e) {
+              send('error', ['Uncaught: ' + e.message + ' at ' + e.filename + ':' + e.lineno]);
+            });
+            window.addEventListener('unhandledrejection', function(e) {
+              send('error', ['Unhandled promise rejection: ' + (e.reason ? e.reason.message || e.reason : 'unknown')]);
+            });
+          })();
+          true;
+        `}
         renderLoading={() => (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#208AEF" />

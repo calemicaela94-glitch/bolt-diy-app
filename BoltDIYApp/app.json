@@ -57,7 +57,8 @@
       "router": {},
       "eas": {
         "projectId": "f867df15-eacb-4672-a7bd-b340add7d362"
-      }
+      },
+      "boltDiyUrl": "https://scaling-telegram-6v9g79xp9jxxc4g5g-5173.app.github.dev/"
     },
     "owner": "calewinha"
   }

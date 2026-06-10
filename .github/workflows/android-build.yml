@@ -15,8 +15,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm install
+      - name: Install BoltDIYApp dependencies
+        run: cd BoltDIYApp && npm install
       - name: Setup EAS CLI
         run: npm install -g eas-cli
       - name: Authenticate with Expo
